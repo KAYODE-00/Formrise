@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 from langchain_core.tools import tool
 from langchain_groq import ChatGroq
 from pypdf import PdfReader
+import re
+
 
 load_dotenv()
 
@@ -55,9 +57,11 @@ async def upload_document(file: UploadFile = File(...)):
 
     print(f"Total extracted text length: {len(full_text)}")
     print(f"First 300 characters: {full_text[:300]}")
+    print(repr(full_text))
 
-    chunks = full_text.split("\n\n")
-    chunks = [c.strip() for c in chunks if c.strip() and len(c.strip()) > 50]
+
+    sections = re.split(r'\n(?=Remote Work Policy|Expense Reimbursement|Sick Leave Policy|Equipment Policy)', full_text)
+    chunks = [c.strip() for c in sections if c.strip() and len(c.strip()) > 50]
 
     if not chunks:
         return {"filename": file.filename, "chunks_added": 0, "message": "No valid text chunks found."}
