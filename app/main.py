@@ -11,10 +11,21 @@ from langchain_groq import ChatGroq
 from pypdf import PdfReader
 import re
 
-
 load_dotenv()
 
 app = FastAPI()
+
+
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+@app.get("/")
+def home():
+    return FileResponse("static/index.html")
+
 
 os.makedirs("data", exist_ok=True)
 
@@ -59,16 +70,21 @@ async def upload_document(file: UploadFile = File(...)):
     print(f"First 300 characters: {full_text[:300]}")
     print(repr(full_text))
 
-
-    sections = re.split(r'\n(?=Remote Work Policy|Expense Reimbursement|Sick Leave Policy|Equipment Policy)', full_text)
+    sections = re.split(
+        r"\n(?=Remote Work Policy|Expense Reimbursement|Sick Leave Policy|Equipment Policy)",
+        full_text,
+    )
     chunks = [c.strip() for c in sections if c.strip() and len(c.strip()) > 50]
 
     if not chunks:
-        return {"filename": file.filename, "chunks_added": 0, "message": "No valid text chunks found."}
+        return {
+            "filename": file.filename,
+            "chunks_added": 0,
+            "message": "No valid text chunks found.",
+        }
 
     collection.add(
-        documents=chunks, 
-        ids=[f"{file.filename}_chunk_{i}" for i in range(len(chunks))]
+        documents=chunks, ids=[f"{file.filename}_chunk_{i}" for i in range(len(chunks))]
     )
 
     return {"filename": file.filename, "chunks_added": len(chunks)}
@@ -95,12 +111,11 @@ Question: {q.text}
 """
 
         groq_response = groq_client.chat.completions.create(
-            model="openai/gpt-oss-120b", 
-            messages=[{"role": "user", "content": prompt}]
+            model="openai/gpt-oss-120b", messages=[{"role": "user", "content": prompt}]
         )
 
         answer = groq_response.choices[0].message.content
         return {"question": q.text, "used_tool": True, "answer": answer}
-        
+
     else:
         return {"question": q.text, "used_tool": False, "answer": response.content}
